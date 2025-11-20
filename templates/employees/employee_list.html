@@ -107,7 +107,7 @@
         .btn-download { background: #6c757d; color: white; }
         .btn-payslip { background: #008000; color: white; }
 
-        /* Popup styles remain same */
+        /* Popup styles */
         .offer-popup-bg {
             position: fixed; top: 0; left: 0;
             width: 100%; height: 100%;
@@ -116,15 +116,17 @@
             z-index: 999;
         }
         .offer-popup {
-            background: white; padding: 30px; width: 380px;
-            border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            background: white; padding: 30px; width: 400px;
+            border-radius: 12px; box-shadow: 0 15px 40px rgba(0,0,0,0.3);
             position: relative;
         }
         .close-btn {
             position: absolute; top: 10px; right: 10px;
             background: #dc3545; color: white;
-            width: 30px; height: 30px; border-radius: 50%;
-            font-size: 18px; line-height: 28px;
+            width: 34px; height: 34
+
+px; border-radius: 50%;
+            font-size: 20px; line-height: 32px;
             text-align: center; cursor: pointer;
         }
         .close-btn:hover { background: #c00; }
@@ -134,15 +136,12 @@
 
 <h2>Employee Directory</h2>
 
-<!-- Add Employee Button -->
 <a href="{% url 'add_employee' %}" class="btn-add">+ Add New Employee</a>
 
-<!-- Search Bar -->
 <div class="search-container">
     <input type="text" id="searchInput" placeholder="Search by Employee Code or Phone Number..." autocomplete="off">
 </div>
 
-<!-- Django Messages (Auto-hide after 3 seconds) -->
 {% if messages %}
     <div class="messages">
         {% for message in messages %}
@@ -228,12 +227,11 @@
     </tbody>
 </table>
 
-<!-- No Results Message -->
 <div id="noResults" class="no-results" style="display:none; background:white; margin-top:20px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
     No employee found matching your search.
 </div>
 
-<!-- OFFER LETTER POPUP (unchanged) -->
+<!-- UPDATED OFFER LETTER POPUP WITH VARIABLE PAY -->
 <div class="offer-popup-bg" id="offerPopup">
     <div class="offer-popup">
         <div class="close-btn" onclick="closeOfferForm()">×</div>
@@ -242,19 +240,43 @@
             {% csrf_token %}
             <input type="hidden" name="emp_id" id="empID">
             <input type="hidden" name="final_employee_code" id="final_employee_code">
+
             <label><strong>Offer Date:</strong></label><br>
-            <input type="date" name="offer_date" id="offer_date" required style="width:100%; padding:8px; margin:8px 0;"><br>
+            <input type="date" name="offer_date" id="offer_date" required style="width:100%; padding:10px; margin:10px 0; border:2px solid #004080; border-radius:6px;"><br>
+
             <label><strong>Employee Code Mode:</strong></label><br>
             <label><input type="radio" name="code_mode" value="auto" checked> Auto Generate (Recommended)</label><br>
             <label><input type="radio" name="code_mode" value="manual"> Manual (Custom Series)</label><br><br>
-            <div id="manual_section" style="display:none; padding:10px; background:#f8f9fa; border-radius:6px;">
+
+            <div id="manual_section" style="display:none; padding:15px; background:#f8f9fa; border-radius:8px; margin-bottom:15px;">
                 <label>Series Number:</label><br>
-                <input type="number" id="series_input" name="manual_series" min="1" style="width:100%; padding:8px;"><br><br>
+                <input type="number" id="series_input" name="manual_series" min="1" style="width:100%; padding:10px; border:2px solid #ccc; border-radius:6px;"><br><br>
                 <label>Preview Code:</label><br>
-                <input type="text" id="preview_code" readonly style="width:100%; padding:8px; background:#e9ecef; font-weight:bold;">
+                <input type="text" id="preview_code" readonly style="width:100%; padding:10px; background:#e9ecef; font-weight:bold; border-radius:6px;">
             </div>
-            <br>
-            <button type="submit" class="btn btn-generate" style="width:100%; padding:12px; font-size:16px;">
+
+            <!-- VARIABLE PAY SECTION -->
+            <div style="border: 2px dashed #004080; padding: 15px; border-radius: 10px; background: #f8fdff; margin: 15px 0;">
+                <label style="display:flex; align-items:center; cursor:pointer; font-weight:bold; color:#004080; font-size:15px;">
+                    <input type="checkbox" id="has_variable_pay" style="margin-right:10px; transform:scale(1.4);">
+                    Add Variable Pay (Optional)
+                </label>
+                <div id="variable_pay_section" style="display:none; margin-top:15px;">
+                    <label><strong>Variable Pay Amount (Annual in ₹)</strong></label><br>
+                    <input type="number" 
+                           name="variable_pay_annum" 
+                           id="variable_pay_input" 
+                           min="0" 
+                           step="1000"
+                           placeholder="e.g. 200000"
+                           style="width:100%; padding:12px; font-size:16px; border:2px solid #004080; borderquit; border-radius:8px; margin-top:8px;">
+                    <small style="color:#555; display:block; margin-top:5px;">
+                        This amount will be added on top of fixed CTC
+                    </small>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-generate" style="width:100%; padding:15px; font-size:17px; font-weight:bold; margin-top:10px;">
                 Generate Offer Letter
             </button>
         </form>
@@ -262,80 +284,78 @@
 </div>
 
 <script>
-// Auto-hide messages after 3 seconds
+// Auto-hide messages
 document.querySelectorAll('.message').forEach(msg => {
     setTimeout(() => {
         msg.style.opacity = '0';
-        msg.style.transform = 'translateY(-20px)';
         setTimeout(() => msg.remove(), 500);
     }, 3000);
 });
 
-// Search Functionality
+// Search functionality
 const searchInput = document.getElementById('searchInput');
 const employeeRows = document.querySelectorAll('.employee-row');
 const noResults = document.getElementById('noResults');
-const employeeBody = document.getElementById('employeeBody');
 
 searchInput.addEventListener('input', function() {
     const query = this.value.trim().toLowerCase();
-    let visibleCount = 0;
-
+    let visible = 0;
     employeeRows.forEach(row => {
-        const code = row.getAttribute('data-code') || '';
-        const phone = row.getAttribute('data-phone') || '';
-
-        if (code.toLowerCase().includes(query) || phone.includes(query)) {
+        const code = (row.dataset.code || '').toLowerCase();
+        const phone = row.dataset.phone || '';
+        if (code.includes(query) || phone.includes(query)) {
             row.style.display = '';
-            visibleCount++;
+            visible++;
         } else {
             row.style.display = 'none';
         }
     });
-
-    // Show/hide no results message
-    if (visibleCount === 0 && query !== '') {
-        noResults.style.display = 'block';
-    } else {
-        noResults.style.display = 'none';
-    }
+    noResults.style.display = (visible === 0 && query) ? 'block' : 'none';
 });
 
-// Offer Popup Functions (unchanged)
+// Open Offer Popup
 function openOfferForm(empId) {
     document.getElementById("empID").value = empId;
     document.getElementById("offer_date").value = new Date().toISOString().split('T')[0];
-    document.getElementById("offerPopup").style.display = "flex";
     document.getElementById("offerForm").action = "/offerletters/generate/" + empId + "/";
+    
+    // Reset Variable Pay
+    document.getElementById("has_variable_pay").checked = false;
+    document.getElementById("variable_pay_section").style.display = "none";
+    document.getElementById("variable_pay_input").value = "";
+
+    document.getElementById("offerPopup").style.display = "flex";
 }
+
 function closeOfferForm() {
     document.getElementById("offerPopup").style.display = "none";
 }
 
-// Manual Code Preview Logic (unchanged)
+// Variable Pay Toggle
+document.getElementById("has_variable_pay").addEventListener("change", function() {
+    document.getElementById("variable_pay_section").style.display = this.checked ? "block" : "none";
+    if (!this.checked) document.getElementById("variable_pay_input").value = "";
+});
+
+// Manual Code Mode
 document.querySelectorAll("input[name='code_mode']").forEach(radio => {
     radio.addEventListener("change", function () {
         document.getElementById("manual_section").style.display = this.value === "manual" ? "block" : "none";
         if (this.value === "auto") {
             document.getElementById("preview_code").value = "";
             document.getElementById("final_employee_code").value = "";
-        } else {
-            updatePreview();
         }
     });
 });
+
 function updatePreview() {
     const dateVal = document.getElementById("offer_date").value;
     const series = document.getElementById("series_input").value.trim();
     const preview = document.getElementById("preview_code");
     const finalInput = document.getElementById("final_employee_code");
-    if (!dateVal) {
-        preview.value = "Select date first";
-        finalInput.value = "";
-        return;
-    }
-    if (!series || series === "0") {
-        preview.value = "Enter valid series";
+    
+    if (!dateVal || !series || series === "0") {
+        preview.value = dateVal ? "Enter valid series" : "Select date first";
         finalInput.value = "";
         return;
     }
@@ -347,6 +367,7 @@ function updatePreview() {
     preview.value = code;
     finalInput.value = code;
 }
+
 document.getElementById("offer_date").addEventListener("change", updatePreview);
 document.getElementById("series_input").addEventListener("input", updatePreview);
 </script>
