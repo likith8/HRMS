@@ -1,0 +1,151 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Generate Releaving Letter</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+            margin: 0;
+            padding: 40px 0;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 550px;
+            background: white;
+            margin: auto;
+            padding: 30px 35px;
+            border-radius: 12px;
+            box-shadow: 0 3px 12px rgba(0,0,0,0.12);
+        }
+
+        h2 {
+            text-align: center;
+            color: #003366;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        .info-box {
+            background: #f0f6ff;
+            padding: 15px;
+            border-left: 4px solid #003366;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 15px;
+        }
+
+        .info-row {
+            margin-bottom: 6px;
+        }
+
+        label {
+            display: block;
+            margin-top: 15px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        input[type="date"] {
+            width: 100%;
+            padding: 10px;
+            margin-top: 6px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 15px;
+        }
+
+        button {
+            width: 100%;
+            margin-top: 25px;
+            padding: 12px 0;
+            background-color: #003366;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            letter-spacing: 0.5px;
+        }
+
+        button:hover {
+            background-color: #00264d;
+        }
+
+        .back-link {
+            text-align: center;
+            display: block;
+            margin-top: 18px;
+            text-decoration: none;
+            color: #555;
+            font-size: 14px;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        /* Disabled past dates style */
+        input[type="date"]:invalid {
+            color: #999;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h2>Generate Releaving Letter</h2>
+
+    <div class="info-box">
+        <div class="info-row"><strong>Employee:</strong> {{ employee.first_name }} {% if employee.last_name %}{{ employee.last_name }}{% endif %}</div>
+        <div class="info-row"><strong>Designation:</strong> {{ employee.designation }}</div>
+        <div class="info-row"><strong>Offer Date:</strong> {{ offer_letter.offer_date|date:"d M Y" }}</div>
+        <div class="info-row"><strong>Employee Code:</strong> {% if hike_letter %}{{ hike_letter.employee_code }}{% endif %}</div>
+    </div>
+
+    <form method="POST">
+        {% csrf_token %}
+        <label for="releaving_date">Releaving Date:</label>
+        <input type="date" name="releaving_date" id="releaving_date" required
+               min="{{ offer_letter.offer_date|date:'Y-m-d' }}"
+               {% if request.POST.releaving_date %}
+                   value="{{ request.POST.releaving_date }}"
+               {% else %}
+                   value="{{ offer_letter.offer_date|date:'Y-m-d' }}"
+               {% endif %}>
+        <button type="submit">Generate Letter</button>
+    </form>
+
+    <a href="{% url 'employee_list' %}" class="back-link">← Back to Employee List</a>
+</div>
+
+<script>
+    // Prevent manual entry of date before offer date
+    window.onload = function() {
+        const dateInput = document.getElementById('releaving_date');
+        const minDate = dateInput.min;
+
+        dateInput.addEventListener('input', function() {
+            if (dateInput.value < minDate) {
+                dateInput.value = minDate;
+            }
+        });
+
+        // Show normal popup messages for success or error
+        {% if messages %}
+            {% for message in messages %}
+                alert("{{ message }}");
+            {% endfor %}
+        {% endif %}
+    };
+</script>
+
+</body>
+</html>

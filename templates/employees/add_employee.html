@@ -1,0 +1,261 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add/Edit Employee</title>
+    <style>
+        /* ===== Global Reset ===== */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 30px 15px;
+        }
+
+        /* ===== Form Container ===== */
+        .form-container {
+            background-color: #ffffff;
+            padding: 35px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            width: 100%;
+            max-width: 500px;
+            transition: all 0.3s ease;
+        }
+
+        h2 {
+            color: #222;
+            text-align: center;
+            margin-bottom: 25px;
+            font-weight: 600;
+            font-size: 1.6rem;
+        }
+
+        /* ===== Form Fields ===== */
+        label {
+            font-weight: 500;
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 18px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 15px;
+            transition: border-color 0.2s;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+
+        input[readonly] {
+            background-color: #e9ecef;
+        }
+
+        /* ===== Buttons ===== */
+        .btn-group {
+            display: flex;
+            justify-content: flex-start;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        button, .btn-back {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            color: #fff;
+            font-size: 14px;
+            text-decoration: none;
+            text-align: center;
+            flex: 1;
+            transition: opacity 0.2s, transform 0.2s;
+        }
+
+        button:hover, .btn-back:hover {
+            opacity: 0.85;
+            transform: scale(1.02);
+        }
+
+        .btn-draft { background-color: #f0ad4e; }
+        .btn-submit { background-color: #28a745; }
+        .btn-back { background-color: #007bff; }
+
+        /* ===== Popup Message Box ===== */
+        .popup-message {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-20px);
+            min-width: 320px;
+            max-width: 90%;
+            padding: 12px 20px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 500;
+            color: #fff;
+            display: none;
+            z-index: 9999;
+            opacity: 0;
+            transition: all 0.4s ease;
+        }
+
+        .popup-message.show {
+            display: block;
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .popup-success { background-color: #28a745; }
+        .popup-error { background-color: #dc3545; }
+        .popup-info { background-color: #17a2b8; }
+
+        /* ===== Responsive Design ===== */
+        @media (max-width: 1024px) {
+            .form-container {
+                max-width: 90%;
+                padding: 30px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .form-container {
+                max-width: 95%;
+                padding: 25px;
+            }
+            h2 {
+                font-size: 1.4rem;
+            }
+            input, textarea, select {
+                font-size: 14px;
+            }
+            .btn-group {
+                flex-direction: column;
+            }
+            button, .btn-back {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 15px;
+            }
+            .form-container {
+                padding: 20px;
+                max-width: 100%;
+            }
+            h2 {
+                font-size: 1.2rem;
+            }
+            button, .btn-back {
+                font-size: 13px;
+                padding: 9px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ===== Popup for Django Messages ===== -->
+<div id="popup" class="popup-message"></div>
+
+<div class="form-container">
+    <h2>{% if form.instance.pk %}Edit{% else %}Add{% endif %} Employee</h2>
+
+    <form method="POST" id="employeeForm">
+        {% csrf_token %}
+        {{ form.first_name.label_tag }} {{ form.first_name }}
+        {{ form.last_name.label_tag }} {{ form.last_name }}
+        {{ form.email.label_tag }} {{ form.email }}
+        {{ form.phone.label_tag }} {{ form.phone }}
+        {{ form.address.label_tag }} {{ form.address }}
+        {{ form.designation.label_tag }} {{ form.designation }}
+
+        <label for="id_package_per_month">Package per Month</label>
+        <input type="number" step="0.01" id="id_package_per_month" name="package_per_month" 
+               value="{{ form.instance.package_per_month|default_if_none:'' }}">
+
+        <label for="id_package_per_annum">Package per Annum</label>
+        <input type="number" step="0.01" id="id_package_per_annum" name="package_per_annum" 
+               value="{{ form.instance.package_per_annum|default_if_none:'' }}" readonly>
+
+        <div class="btn-group">
+            <button type="submit" name="action" value="draft" class="btn-draft">💾 Save as Draft</button>
+            <button type="submit" name="action" value="final" class="btn-submit">✅ Submit Final</button>
+            <a href="{% url 'employee_list' %}" class="btn-back">🔙 Back to List</a>
+        </div>
+    </form>
+</div>
+
+<script>
+    // ===== Auto-calculate Annual Package =====
+    const packagePerMonth = document.getElementById('id_package_per_month');
+    const packagePerAnnum = document.getElementById('id_package_per_annum');
+    packagePerMonth.addEventListener('input', function() {
+        const monthValue = parseFloat(packagePerMonth.value) || 0;
+        packagePerAnnum.value = (monthValue * 12).toFixed(2);
+    });
+
+    // ===== Popup Message Function =====
+    function showPopup(message, type = "info") {
+        const popup = document.getElementById("popup");
+        popup.textContent = message;
+        popup.className = "popup-message show popup-" + type;
+
+        setTimeout(() => {
+            popup.classList.remove("show");
+        }, 3500);
+    }
+
+    // ===== Show Django messages on load =====
+    {% if messages %}
+        {% for message in messages %}
+            showPopup("{{ message }}", "{{ message.tags }}");
+        {% endfor %}
+    {% endif %}
+
+    // ===== Real-time Email & Phone Check =====
+    const emailInput = document.getElementById("id_email");
+    const phoneInput = document.getElementById("id_phone");
+
+    [emailInput, phoneInput].forEach(input => {
+        input.addEventListener("blur", () => {
+            const email = emailInput.value.trim();
+            const phone = phoneInput.value.trim();
+
+            if (email || phone) {
+                fetch("{% url 'check_unique_employee' %}?email=" + encodeURIComponent(email) + "&phone=" + encodeURIComponent(phone))
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.exists) {
+                            showPopup("⚠️ Email or Phone number already exists!", "error");
+                            input.focus();
+                        }
+                    });
+            }
+        });
+    });
+</script>
+
+</body>
+</html>

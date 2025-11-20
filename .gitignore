@@ -1,0 +1,28 @@
+# Python & Django
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+
+# Database
+db.sqlite3
+db.sqlite3-journal
+
+# Media & uploads
+media/
+
+# IDE/Editor
+.vscode/
+.idea/
+*.sublime-*
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.local

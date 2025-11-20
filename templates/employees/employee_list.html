@@ -1,0 +1,354 @@
+{% load file_filters %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Employee List</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            margin: 20px;
+            color: #333;
+        }
+        h2 { text-align: center; margin-bottom: 25px; color: #004080; }
+        
+        /* Search Bar */
+        .search-container {
+            margin: 20px 0;
+            text-align: center;
+        }
+        .search-container input {
+            padding: 12px 16px;
+            width: 320px;
+            max-width: 100%;
+            border: 2px solid #004080;
+            border-radius: 30px;
+            font-size: 16px;
+            outline: none;
+        }
+        .search-container input:focus {
+            box-shadow: 0 0 8px rgba(0, 64, 128, 0.3);
+        }
+
+        /* Messages Styling */
+        .messages {
+            margin: 20px 0;
+            list-style: none;
+            padding: 0;
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            width: 90%;
+            max-width: 500px;
+        }
+        .message {
+            padding: 14px 20px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            font-size: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            animation: slideDown 0.4s ease-out;
+            opacity: 0;
+            transition: opacity 0.5s, transform 0.5s;
+        }
+        .message.show { opacity: 1; }
+        .message.success { background: #d4edda; color: #155724; border-left: 5px solid #28a745; }
+        .message.error { background: #f8d7da; color: #721c24; border-left: 5px solid #dc3545; }
+        .message.info { background: #d1ecf1; color: #0c5460; border-left: 5px solid #17a2b8; }
+        .message.warning { background: #fff3cd; color: #856404; border-left: 5px solid #ffc107; }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        a.btn-add {
+            display: inline-block;
+            background: #004080;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            text-decoration: none;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        a.btn-add:hover { background: #003060; }
+        table {
+            width: 100%; border-collapse: collapse; background: #fff;
+            border-radius: 8px; overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        th, td {
+            padding: 12px 15px; text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        th { background: #004080; color: white; }
+        tr:hover { background: #f8f9fa; }
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-style: italic;
+        }
+        .actions { display: flex; flex-direction: column; gap: 6px; }
+        .btn {
+            padding: 7px 12px; border-radius: 4px; border: none;
+            cursor: pointer; font-size: 13px; text-decoration: none;
+            display: inline-block; text-align: center;
+        }
+        .btn-generate { background: #004080; color: white; }
+        .btn-edit { background: #0073b1; color: white; }
+        .btn-delete { background: #c00; color: white; }
+        .btn-hike { background: #ff6600; color: white; }
+        .btn-download { background: #6c757d; color: white; }
+        .btn-payslip { background: #008000; color: white; }
+
+        /* Popup styles remain same */
+        .offer-popup-bg {
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            display: none; justify-content: center; align-items: center;
+            z-index: 999;
+        }
+        .offer-popup {
+            background: white; padding: 30px; width: 380px;
+            border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            position: relative;
+        }
+        .close-btn {
+            position: absolute; top: 10px; right: 10px;
+            background: #dc3545; color: white;
+            width: 30px; height: 30px; border-radius: 50%;
+            font-size: 18px; line-height: 28px;
+            text-align: center; cursor: pointer;
+        }
+        .close-btn:hover { background: #c00; }
+    </style>
+</head>
+<body>
+
+<h2>Employee Directory</h2>
+
+<!-- Add Employee Button -->
+<a href="{% url 'add_employee' %}" class="btn-add">+ Add New Employee</a>
+
+<!-- Search Bar -->
+<div class="search-container">
+    <input type="text" id="searchInput" placeholder="Search by Employee Code or Phone Number..." autocomplete="off">
+</div>
+
+<!-- Django Messages (Auto-hide after 3 seconds) -->
+{% if messages %}
+    <div class="messages">
+        {% for message in messages %}
+            <div class="message {{ message.tags|default:'info' }} show">
+                {{ message|safe }}
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
+
+<table id="employeeTable">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Employee ID</th>
+            <th>First Name</th>
+            <th>Last Name</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>Address</th>
+            <th>Designation</th>
+            <th>Package (Annual)</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody id="employeeBody">
+    {% for emp in employees %}
+        <tr class="employee-row"
+            data-code="{{ emp.employee_code|default:'' }}"
+            data-phone="{{ emp.phone|default:'' }}">
+            <td>{{ forloop.counter }}</td>
+            <td><strong>{{ emp.employee_code|default:"—" }}</strong></td>
+            <td>{{ emp.first_name }}</td>
+            <td>{{ emp.last_name|default:"—" }}</td>
+            <td>{{ emp.email }}</td>
+            <td>{{ emp.phone }}</td>
+            <td>{{ emp.address|default:"—"|truncatechars:30 }}</td>
+            <td>{{ emp.designation|default:"—" }}</td>
+            <td>₹{{ emp.package_per_annum|floatformat:0 }}</td>
+            <td>
+                {% if emp.is_draft %}
+                    <span style="color:#b56500; font-weight:bold;">Draft</span>
+                {% else %}
+                    <span style="color:#006600; font-weight:bold;">Active</span>
+                {% endif %}
+            </td>
+            <td class="actions">
+                <a href="{% url 'edit_employee' emp.id %}" class="btn btn-edit">Edit</a>
+                <a href="{% url 'delete_employee' emp.id %}" class="btn btn-delete"
+                   onclick="return confirm('Delete {{ emp.first_name }} permanently?')">Delete</a>
+                {% if not emp.is_draft %}
+                    <button class="btn btn-generate" onclick="openOfferForm('{{ emp.id }}')">
+                        Generate Offer
+                    </button>
+                {% endif %}
+                {% if emp.hike_letters.exists %}
+                    {% with emp.hike_letters.last as last_hike %}
+                        <small style="color:#006400;">
+                            Last Hike: ₹{{ last_hike.new_package }} ({{ last_hike.date|date:"d M Y" }})
+                        </small>
+                    {% endwith %}
+                {% endif %}
+                {% if emp.offerletter_set.exists %}
+                    {% with emp.offerletter_set.last as offer %}
+                        {% if offer.file and offer.file|file_exists %}
+                            <a href="{{ offer.file.url }}" class="btn btn-download" target="_blank">Download Offer</a>
+                            <a href="{% url 'generate_hike_letter' emp.id %}" class="btn btn-hike">Hike Letter</a>
+                            <a href="{% url 'generate_payslip' emp.id %}" class="btn btn-payslip">Payslip</a>
+                            <a href="{% url 'generate_releaving' emp.id %}" class="btn btn-releaving">Generate Releaving</a>
+                        {% endif %}
+                    {% endwith %}
+                {% endif %}
+            </td>
+        </tr>
+    {% empty %}
+        <tr>
+            <td colspan="11" class="no-results">
+                No employees found. <a href="{% url 'add_employee' %}">Add the first one!</a>
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<!-- No Results Message -->
+<div id="noResults" class="no-results" style="display:none; background:white; margin-top:20px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+    No employee found matching your search.
+</div>
+
+<!-- OFFER LETTER POPUP (unchanged) -->
+<div class="offer-popup-bg" id="offerPopup">
+    <div class="offer-popup">
+        <div class="close-btn" onclick="closeOfferForm()">×</div>
+        <h3>Generate Offer Letter</h3>
+        <form method="post" id="offerForm" action="">
+            {% csrf_token %}
+            <input type="hidden" name="emp_id" id="empID">
+            <input type="hidden" name="final_employee_code" id="final_employee_code">
+            <label><strong>Offer Date:</strong></label><br>
+            <input type="date" name="offer_date" id="offer_date" required style="width:100%; padding:8px; margin:8px 0;"><br>
+            <label><strong>Employee Code Mode:</strong></label><br>
+            <label><input type="radio" name="code_mode" value="auto" checked> Auto Generate (Recommended)</label><br>
+            <label><input type="radio" name="code_mode" value="manual"> Manual (Custom Series)</label><br><br>
+            <div id="manual_section" style="display:none; padding:10px; background:#f8f9fa; border-radius:6px;">
+                <label>Series Number:</label><br>
+                <input type="number" id="series_input" name="manual_series" min="1" style="width:100%; padding:8px;"><br><br>
+                <label>Preview Code:</label><br>
+                <input type="text" id="preview_code" readonly style="width:100%; padding:8px; background:#e9ecef; font-weight:bold;">
+            </div>
+            <br>
+            <button type="submit" class="btn btn-generate" style="width:100%; padding:12px; font-size:16px;">
+                Generate Offer Letter
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+// Auto-hide messages after 3 seconds
+document.querySelectorAll('.message').forEach(msg => {
+    setTimeout(() => {
+        msg.style.opacity = '0';
+        msg.style.transform = 'translateY(-20px)';
+        setTimeout(() => msg.remove(), 500);
+    }, 3000);
+});
+
+// Search Functionality
+const searchInput = document.getElementById('searchInput');
+const employeeRows = document.querySelectorAll('.employee-row');
+const noResults = document.getElementById('noResults');
+const employeeBody = document.getElementById('employeeBody');
+
+searchInput.addEventListener('input', function() {
+    const query = this.value.trim().toLowerCase();
+    let visibleCount = 0;
+
+    employeeRows.forEach(row => {
+        const code = row.getAttribute('data-code') || '';
+        const phone = row.getAttribute('data-phone') || '';
+
+        if (code.toLowerCase().includes(query) || phone.includes(query)) {
+            row.style.display = '';
+            visibleCount++;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+
+    // Show/hide no results message
+    if (visibleCount === 0 && query !== '') {
+        noResults.style.display = 'block';
+    } else {
+        noResults.style.display = 'none';
+    }
+});
+
+// Offer Popup Functions (unchanged)
+function openOfferForm(empId) {
+    document.getElementById("empID").value = empId;
+    document.getElementById("offer_date").value = new Date().toISOString().split('T')[0];
+    document.getElementById("offerPopup").style.display = "flex";
+    document.getElementById("offerForm").action = "/offerletters/generate/" + empId + "/";
+}
+function closeOfferForm() {
+    document.getElementById("offerPopup").style.display = "none";
+}
+
+// Manual Code Preview Logic (unchanged)
+document.querySelectorAll("input[name='code_mode']").forEach(radio => {
+    radio.addEventListener("change", function () {
+        document.getElementById("manual_section").style.display = this.value === "manual" ? "block" : "none";
+        if (this.value === "auto") {
+            document.getElementById("preview_code").value = "";
+            document.getElementById("final_employee_code").value = "";
+        } else {
+            updatePreview();
+        }
+    });
+});
+function updatePreview() {
+    const dateVal = document.getElementById("offer_date").value;
+    const series = document.getElementById("series_input").value.trim();
+    const preview = document.getElementById("preview_code");
+    const finalInput = document.getElementById("final_employee_code");
+    if (!dateVal) {
+        preview.value = "Select date first";
+        finalInput.value = "";
+        return;
+    }
+    if (!series || series === "0") {
+        preview.value = "Enter valid series";
+        finalInput.value = "";
+        return;
+    }
+    const d = new Date(dateVal);
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yy = String(d.getFullYear()).slice(2);
+    const padded = String(series).padStart(3, '0');
+    const code = `STPL${mm}${yy}${padded}`;
+    preview.value = code;
+    finalInput.value = code;
+}
+document.getElementById("offer_date").addEventListener("change", updatePreview);
+document.getElementById("series_input").addEventListener("input", updatePreview);
+</script>
+</body>
+</html>
