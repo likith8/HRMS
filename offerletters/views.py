@@ -255,7 +255,8 @@ def generate_offer_letter(request, employee_id):
         defaults={
             "offer_date": offer_date,
             "employee_code": employee_code,
-            "file": f"offer_letters/{filename}"
+            "file": f"offer_letters/{filename}",
+            "variable_pay_per_annum":variable_pay_annum,
         }
     )
 

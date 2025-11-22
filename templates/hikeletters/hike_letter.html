@@ -5,66 +5,86 @@
     <meta charset="UTF-8">
     <title>Generate Hike Letter</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <style>
-        body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 30px; }
-        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        h2 { text-align: center; color: #004080; margin-bottom: 20px; }
-        label { display: block; margin-top: 15px; font-weight: bold; }
-        select, input[type="text"], input[type="date"], input[type="number"] {
-            width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px;
-        }
-        button { margin-top: 20px; padding: 10px 15px; background-color: #004080; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        button:hover { opacity: 0.9; }
-        .back-link { display: block; margin-top: 15px; text-align: center; color: #555; text-decoration: none; }
-        .back-link:hover { text-decoration: underline; }
-        .info { margin-bottom: 10px; font-size: 14px; }
-        .error-message { color: #d9534f; font-weight: 500; margin-top: 10px; }
-        .success { color: green; font-weight: bold; margin-bottom: 10px; }
-        .alert { padding: 10px; border-radius: 4px; margin-bottom: 10px; }
-        .alert-error { background: #ffd5d5; color: #b30000; }
-        .alert-success { background: #d5ffd8; color: #006600; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8f9fc; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 650px; margin: 40px auto; background: white; padding: 35px; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.12); }
+        h2 { text-align: center; color: #004080; margin-bottom: 30px; font-size: 26px; font-weight: 600; }
+        .info-grid { display: grid; grid-template-columns: max-content 1fr; gap: 12px 20px; background: #f0f8ff; padding: 18px; border-radius: 10px; margin-bottom: 25px; font-size: 15.5px; }
+        .info-grid strong { color: #004080; font-weight: 600; }
+        label { display: block; margin-top: 20px; font-weight: 600; color: #333; font-size: 15px; }
+        input[type="date"], input[type="number"] { width: 100%; padding: 13px; margin-top: 8px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; transition: all 0.3s; }
+        input:focus { outline: none; border-color: #004080; box-shadow: 0 0 10px rgba(0,64,128,0.2); }
+        .annual-box { margin-top: 15px; padding: 18px; background: linear-gradient(135deg, #e6f7ff, #d4edff); border: 2px dashed #004080; border-radius: 10px; text-align: center; font-size: 22px; font-weight: bold; color: #004080; }
+        button { margin-top: 35px; width: 100%; padding: 16px; background: #004080; color: white; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; }
+        button:hover { background: #003060; }
+        .back-link { display: block; text-align: center; margin-top: 25px; color: #666; text-decoration: none; font-size: 15px; }
+        .back-link:hover { color: #004080; text-decoration: underline; }
+        .error-message { background: #ffe6e6; color: #c00; padding: 14px; border-radius: 8px; margin-top: 15px; border-left: 5px solid #c00; font-weight: 500; }
+        .warning-box { background: #fff8e1; color: #b37400; padding: 14px; border-radius: 8px; margin: 20px 0; border-left: 5px solid #ffc107; font-size: 14.5px; }
+        .note { font-size: 13.5px; color: #555; margin-top: 8px; font-style: italic; }
     </style>
 </head>
-
 <body>
     <div class="container">
         <h2>Generate Hike Letter</h2>
 
-        <!-- SHOW DJANGO MESSAGES -->
         {% if messages %}
             {% for message in messages %}
-                <div class="alert {% if message.tags == 'error' %}alert-error{% else %}alert-success{% endif %}">
-                    {{ message }}
-                </div>
+                <div class="error-message">{{ message }}</div>
             {% endfor %}
         {% endif %}
 
-        <div class="info"><strong>Employee:</strong> {{ employee.first_name }} {{ employee.last_name }}</div>
-        <div class="info"><strong>Employee Code:</strong>
-            {% if employee.hike_letters.last %}
-                {{ employee.hike_letters.last.employee_code }}
-            {% else %}
-                STPL{{ employee.id|stringformat:"03d" }}
-            {% endif %}
+        <div class="info-grid">
+            <strong>Employee Name:</strong>
+            <span>{{ employee.first_name }} {{ employee.last_name|default:"" }}</span>
+
+            <strong>Designation:</strong>
+            <span>{{ designation|default:"Not Specified" }}</span>
+
+            <strong>Current CTC (Annual) Based on Offer Letter:</strong>
+            <span style="font-weight:bold; color:#d00;">₹{{ old_package|floatformat:0 }}</span>
+
+            <strong>Original Joining Date:</strong>
+            <span style="color:#c00; font-weight:bold;">
+                {{ min_date|date:"d F Y" }}
+            </span>
         </div>
-        <div class="info"><strong>Old Package (Per Annum):</strong> ₹{{ old_package }}</div>
+
+        <div class="warning-box">
+            <strong>Important:</strong> Hike letter date <strong>cannot</strong> be before the original joining date shown above.
+        </div>
 
         <form method="POST">
             {% csrf_token %}
 
-            <label for="date">Todays Date(Ex: Todays date menas hike is from next from starting):</label>
-            <input type="date" name="date" id="date" required
+            <label for="date">
+                Hike Letter Date <span style="color:#004080;">(Hike starts from next month)</span>
+            </label>
+            <input type="date"
+                   name="date"
+                   id="date"
+                   required
                    min="{{ min_date|date:'Y-m-d' }}"
-                   value="{{ min_date|date:'Y-m-d' }}">
+                   value="{% now 'Y-m-d' %}">
 
-            <label for="new_package_month">New Package (Per Month in ₹):</label>
-            <input type="number" step="0.01" name="new_package_month" id="new_package_month" required
-                   value="{{ new_package_month|default_if_none:'' }}" oninput="calculateAnnual()">
+            <div class="note">
+                Hike will be effective from the <strong>1st of next month</strong> after the selected date.
+            </div>
 
-            <div class="info">
-                <strong>New Package (Per Annum):</strong> ₹
-                <span id="new_package_annual">{{ new_package_annual|default_if_none:'' }}</span>
+            <label for="new_package_month">
+                New Monthly CTC (₹)
+            </label>
+            <input type="number"
+                   step="1000"
+                   min="10000"
+                   name="new_package_month"
+                   id="new_package_month"
+                   placeholder="e.g. 85000"
+                   required
+                   oninput="calculateAnnual()">
+
+            <div class="annual-box">
+                New Annual CTC: ₹ <span id="new_package_annual_display">0</span>
             </div>
 
             <input type="hidden" name="new_package_annual" id="new_package_annual_input">
@@ -76,31 +96,35 @@
             <div class="error-message">{{ error_message }}</div>
         {% endif %}
 
-        <a href="{% url 'employee_list' %}" class="back-link">← Back to Employee List</a>
+        <a href="{% url 'employee_list' %}" class="back-link">Back to Employee List</a>
     </div>
 
     <script>
-        // Calculate Annual Package
+        const MIN_DATE_STR = "{{ min_date|date:'Y-m-d' }}";
+        const dateInput = document.getElementById('date');
+
         function calculateAnnual() {
-            let monthVal = document.getElementById('new_package_month').value;
-            let annualVal = monthVal ? parseFloat(monthVal) * 12 : '';
-            let formatted = annualVal ? annualVal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '';
-            document.getElementById('new_package_annual').innerText = formatted;
-            document.getElementById('new_package_annual_input').value = annualVal ? annualVal.toFixed(2) : '';
+            const monthly = parseFloat(document.getElementById('new_package_month').value) || 0;
+            const annual = monthly * 12;
+            const formatted = annual.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+            document.getElementById('new_package_annual_display').textContent = formatted;
+            document.getElementById('new_package_annual_input').value = annual.toFixed(2);
+        }
+
+        function blockPastDate() {
+            if (dateInput.value && dateInput.value < MIN_DATE_STR) {
+                alert("Hike date cannot be before original joining date: " + 
+                      new Date(MIN_DATE_STR).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }));
+                dateInput.value = MIN_DATE_STR;
+            }
         }
 
         window.onload = function() {
             calculateAnnual();
 
-            const dateInput = document.getElementById('date');
-            const minDate = dateInput.min;
-
-            // Prevent manual typing of past dates
-            dateInput.addEventListener('input', function() {
-                if (dateInput.value < minDate) {
-                    dateInput.value = minDate;
-                }
-            });
+            dateInput.addEventListener('change', blockPastDate);
+            dateInput.addEventListener('input', blockPastDate);
+            dateInput.addEventListener('blur', blockPastDate);
         };
     </script>
 </body>
