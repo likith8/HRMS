@@ -12,3 +12,5 @@ class HikeLetter(models.Model):
 
     def __str__(self):
         return f"Hike Letter - {self.employee.first_name} ({self.employee_code})"
+    
+   

@@ -1,3 +1,5 @@
+# payslips/models.py
+
 from django.db import models
 from employees.models import Employee
 from offerletters.models import OfferLetter
@@ -15,7 +17,7 @@ class Payslip(models.Model):
     offer_letter = models.ForeignKey(OfferLetter, on_delete=models.SET_NULL, null=True, blank=True)
     hike_letter = models.ForeignKey(HikeLetter, on_delete=models.SET_NULL, null=True, blank=True)
 
-    # ✅ Period instead of month
+    # Period instead of month
     month_year = models.CharField(max_length=20)  # Example: "November 2025"
 
     days_worked = models.PositiveIntegerField()
@@ -25,5 +27,18 @@ class Payslip(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # THIS IS THE ONLY NEW FIELD — FOR DOWNLOAD BUTTON
+    payslip_file = models.FileField(
+        upload_to="payslips/",
+        null=True,
+        blank=True,
+        help_text="Generated payslip document"
+    )
+
     def __str__(self):
-        return f"Payslip for {self.employee.first_name} - {self.month_year}"
+        return f"Payslip for {self.employee.get_full_name()} - {self.month_year}"
+
+    class Meta:
+        unique_together = ('employee', 'month_year')
+        verbose_name = "Payslip"
+        verbose_name_plural = "Payslips"

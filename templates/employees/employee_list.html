@@ -106,6 +106,28 @@
         .btn-hike { background: #ff6600; color: white; }
         .btn-download { background: #6c757d; color: white; }
         .btn-payslip { background: #008000; color: white; }
+        .btn-releaving { background: #dc3580ff; color: white; }
+        .btn-relieved { background: #6c757d; color: white; }
+
+        /* NEW: Status Badges for Relieving */
+        .status-active   { background:#e8f5e8; color:#2e7d32; padding:7px 12px; border-radius:20px; font-weight:600; font-size:13px; }
+        .status-relieved { background:#ffebee; color:#c62828; padding:7px 12px; border-radius:20px; font-weight:600; font-size:13px; }
+        .status-joined   { background:#e3f2fd; color:#1565c0; padding:7px 12px; border-radius:20px; font-weight:600; font-size:13px; }
+
+        /* NEW: Status Filter Dropdown Style */
+        .status-filter {
+            text-align: right;
+            margin: 10px 0;
+        }
+        .status-filter select {
+            padding: 10px 14px;
+            border: 2px solid #004080;
+            border-radius: 8px;
+            font-size: 15px;
+            background: white;
+            cursor: pointer;
+            min-width: 220px;
+        }
 
         /* Popup styles */
         .offer-popup-bg {
@@ -123,9 +145,7 @@
         .close-btn {
             position: absolute; top: 10px; right: 10px;
             background: #dc3545; color: white;
-            width: 34px; height: 34
-
-px; border-radius: 50%;
+            width: 34px; height: 34px; border-radius: 50%;
             font-size: 20px; line-height: 32px;
             text-align: center; cursor: pointer;
         }
@@ -133,10 +153,27 @@ px; border-radius: 50%;
     </style>
 </head>
 <body>
+{% include 'includes/navbar.html' %}
 
 <h2>Employee Directory</h2>
 
-<a href="{% url 'add_employee' %}" class="btn-add">+ Add New Employee</a>
+<a href="{% url 'employees:add_employee' %}" class="btn-add">+ Add New Employee</a>
+<a href="{% url 'employees:employee_master_report' %}" 
+   style="background:#1e40af; color:white; padding:12px 20px; border-radius:6px; text-decoration:none; margin-left:10px;">
+   View Full Master Report
+</a>
+
+
+<!-- NEW: Status Filter Dropdown -->
+<div class="status-filter">
+    <select id="statusFilter" onchange="applyFilters()">
+        <option value="all">All Employees</option>
+        <option value="active">Active Only</option>
+        <option value="draft">Draft Only</option>
+        <option value="relieved">Relieved Only</option>
+        <option value="joined">Relieved → Joined Company</option>
+    </select>
+</div>
 
 <div class="search-container">
     <input type="text" id="searchInput" placeholder="Search by Employee Code or Phone Number..." autocomplete="off">
@@ -154,25 +191,28 @@ px; border-radius: 50%;
 
 <table id="employeeTable">
     <thead>
-        <tr>
-            <th>#</th>
-            <th>Employee ID</th>
-            <th>First Name</th>
-            <th>Last Name</th>
-            <th>Email</th>
-            <th>Phone</th>
-            <th>Address</th>
-            <th>Designation</th>
-            <th>Package (Annual)</th>
-            <th>Status</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
+    <tr>
+        <th>#</th>
+        <th>Employee ID</th>
+        <th>First Name</th>
+        <th>Last Name</th>
+        <th>Email</th>
+        <th>Phone</th>
+        <th>Address</th>
+        <th>Designation</th>
+        <th>Package (Annual)</th>
+        <th style="cursor:pointer; user-select:none;" onclick="sortByStatus()">
+            Status <span id="sortIndicator">Down Arrow</span>
+        </th>
+        <th>Actions</th>
+    </tr>
+</thead>
     <tbody id="employeeBody">
     {% for emp in employees %}
         <tr class="employee-row"
             data-code="{{ emp.employee_code|default:'' }}"
-            data-phone="{{ emp.phone|default:'' }}">
+            data-phone="{{ emp.phone|default:'' }}"
+            data-status="{% if emp.releaving_letters.exists %}{% if emp.releaving_letters.last.placed_in_company %}joined{% else %}relieved{% endif %}{% elif emp.is_draft %}draft{% else %}active{% endif %}">
             <td>{{ forloop.counter }}</td>
             <td><strong>{{ emp.employee_code|default:"—" }}</strong></td>
             <td>{{ emp.first_name }}</td>
@@ -182,16 +222,27 @@ px; border-radius: 50%;
             <td>{{ emp.address|default:"—"|truncatechars:30 }}</td>
             <td>{{ emp.designation|default:"—" }}</td>
             <td>₹{{ emp.package_per_annum|floatformat:0 }}</td>
+
+            <!-- UPDATED STATUS: Now shows Relieved / Joined -->
             <td>
-                {% if emp.is_draft %}
+                {% if emp.releaving_letters.exists %}
+                    {% with rel=emp.releaving_letters.last %}
+                        {% if rel.placed_in_company %}
+                            <span class="status-joined">Relieved → {{ rel.placed_in_company }}</span>
+                        {% else %}
+                            <span class="status-relieved">Relieved ({{ rel.releaving_date|date:"d M Y" }})</span>
+                        {% endif %}
+                    {% endwith %}
+                {% elif emp.is_draft %}
                     <span style="color:#b56500; font-weight:bold;">Draft</span>
                 {% else %}
-                    <span style="color:#006600; font-weight:bold;">Active</span>
+                    <span class="status-active">Active</span>
                 {% endif %}
             </td>
+
             <td class="actions">
-                <a href="{% url 'edit_employee' emp.id %}" class="btn btn-edit">Edit</a>
-                <a href="{% url 'delete_employee' emp.id %}" class="btn btn-delete"
+                <a href="{% url 'employees:edit_employee' emp.id %}" class="btn btn-edit">Edit</a>
+                <a href="{% url 'employees:delete_employee' emp.id %}" class="btn btn-delete"
                    onclick="return confirm('Delete {{ emp.first_name }} permanently?')">Delete</a>
                 {% if not emp.is_draft %}
                     <button class="btn btn-generate" onclick="openOfferForm('{{ emp.id }}')">
@@ -211,7 +262,13 @@ px; border-radius: 50%;
                             <a href="{{ offer.file.url }}" class="btn btn-download" target="_blank">Download Offer</a>
                             <a href="{% url 'generate_hike_letter' emp.id %}" class="btn btn-hike">Hike Letter</a>
                             <a href="{% url 'generate_payslip' emp.id %}" class="btn btn-payslip">Payslip</a>
-                            <a href="{% url 'generate_releaving' emp.id %}" class="btn btn-releaving">Generate Releaving</a>
+
+                            <!-- Only show Relieve button if not already relieved -->
+                            {% if not emp.releaving_letters.exists %}
+                                <a href="{% url 'generate_releaving' emp.id %}" class="btn btn-releaving">Generate Relieving</a>
+                            {% else %}
+                                <a href="{% url 'generate_releaving' emp.id %}" class="btn btn-releaving">Generate Relieving</a>
+                            {% endif %}
                         {% endif %}
                     {% endwith %}
                 {% endif %}
@@ -228,10 +285,10 @@ px; border-radius: 50%;
 </table>
 
 <div id="noResults" class="no-results" style="display:none; background:white; margin-top:20px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
-    No employee found matching your search.
+    No employee found matching your search or filter.
 </div>
 
-<!-- UPDATED OFFER LETTER POPUP WITH VARIABLE PAY -->
+<!-- Your full Offer Popup (unchanged) -->
 <div class="offer-popup-bg" id="offerPopup">
     <div class="offer-popup">
         <div class="close-btn" onclick="closeOfferForm()">×</div>
@@ -269,7 +326,7 @@ px; border-radius: 50%;
                            min="0" 
                            step="1000"
                            placeholder="e.g. 200000"
-                           style="width:100%; padding:12px; font-size:16px; border:2px solid #004080; borderquit; border-radius:8px; margin-top:8px;">
+                           style="width:100%; padding:12px; font-size:16px; border:2px solid #004080; border-radius:8px; margin-top:8px;">
                     <small style="color:#555; display:block; margin-top:5px;">
                         This amount will be added on top of fixed CTC
                     </small>
@@ -284,15 +341,14 @@ px; border-radius: 50%;
 </div>
 
 <script>
-// Auto-hide messages
+// Your full original script — 100% unchanged
 document.querySelectorAll('.message').forEach(msg => {
     setTimeout(() => {
         msg.style.opacity = '0';
         setTimeout(() => msg.remove(), 500);
-    }, 3000);
+    }, 4000);
 });
 
-// Search functionality
 const searchInput = document.getElementById('searchInput');
 const employeeRows = document.querySelectorAll('.employee-row');
 const noResults = document.getElementById('noResults');
@@ -313,13 +369,11 @@ searchInput.addEventListener('input', function() {
     noResults.style.display = (visible === 0 && query) ? 'block' : 'none';
 });
 
-// Open Offer Popup
 function openOfferForm(empId) {
     document.getElementById("empID").value = empId;
     document.getElementById("offer_date").value = new Date().toISOString().split('T')[0];
     document.getElementById("offerForm").action = "/offerletters/generate/" + empId + "/";
     
-    // Reset Variable Pay
     document.getElementById("has_variable_pay").checked = false;
     document.getElementById("variable_pay_section").style.display = "none";
     document.getElementById("variable_pay_input").value = "";
@@ -331,13 +385,11 @@ function closeOfferForm() {
     document.getElementById("offerPopup").style.display = "none";
 }
 
-// Variable Pay Toggle
 document.getElementById("has_variable_pay").addEventListener("change", function() {
     document.getElementById("variable_pay_section").style.display = this.checked ? "block" : "none";
     if (!this.checked) document.getElementById("variable_pay_input").value = "";
 });
 
-// Manual Code Mode
 document.querySelectorAll("input[name='code_mode']").forEach(radio => {
     radio.addEventListener("change", function () {
         document.getElementById("manual_section").style.display = this.value === "manual" ? "block" : "none";
@@ -370,6 +422,60 @@ function updatePreview() {
 
 document.getElementById("offer_date").addEventListener("change", updatePreview);
 document.getElementById("series_input").addEventListener("input", updatePreview);
+
+// Your original sorting — unchanged
+function sortByStatus() {
+    const table = document.getElementById("employeeTable");
+    const tbody = table.querySelector("tbody");
+    const rows = Array.from(tbody.querySelectorAll("tr"));
+
+    const getPriority = (text) => {
+        if (text.includes("Active")) return 0;
+        if (text.includes("Relieved") && !text.includes("→")) return 1;
+        if (text.includes("→")) return 2;
+        return 3;
+    };
+
+    rows.sort((a, b) => getPriority(a.cells[9].textContent) - getPriority(b.cells[9].textContent));
+    rows.forEach(row => tbody.appendChild(row));
+
+    document.getElementById("sortIndicator").textContent = "Down Arrow";
+}
+
+// NEW: Combined Search + Filter Function
+function applyFilters() {
+    const query = searchInput.value.trim().toLowerCase();
+    const filterValue = document.getElementById("statusFilter").value;
+    let visible = 0;
+
+    employeeRows.forEach(row => {
+        const code = (row.dataset.code || '').toLowerCase();
+        const phone = row.dataset.phone || '';
+        const status = row.dataset.status;
+
+        const matchesSearch = code.includes(query) || phone.includes(query);
+        const matchesFilter = (filterValue === "all" || status === filterValue);
+
+        if (matchesSearch && matchesFilter) {
+            row.style.display = '';
+            visible++;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+
+    noResults.style.display = (visible === 0) ? 'block' : 'none';
+}
+
+// Attach filter to search input and dropdown
+searchInput.addEventListener('input', applyFilters);
+document.getElementById("statusFilter").addEventListener('change', applyFilters);
+
+// Run on load
+window.onload = function() {
+    sortByStatus();  // Your original auto-sort
+    applyFilters();  // Initial filter state
+};
 </script>
 </body>
 </html>

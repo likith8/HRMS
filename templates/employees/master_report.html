@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Employee Master Report</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+    <style>
+        :root {
+            --primary: #004080;
+            --success: #2e7d32;
+            --danger: #c62828;
+            --warning: #b56500;
+            --info: #1565c0;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
+            color: #2d3748;
+            padding: 20px 0;
+            min-height: 100vh;
+        }
+        .container { max-width: 1600px; margin: 0 auto; padding: 0 15px; }
+
+        .header {
+            text-align: center;
+            background: white;
+            padding: 35px 20px;
+            border-radius: 18px;
+            box-shadow: 0 12px 35px rgba(0,64,128,0.1);
+            margin-bottom: 30px;
+        }
+        h1 { font-size: 2.6rem; color: var(--primary); font-weight: 700; margin-bottom: 10px; }
+        .total-count { font-size: 1.5rem; color: #4a5568; margin: 15px 0; }
+        .total-count strong { font-size: 2.3rem; color: var(--primary); }
+        .btn-download {
+            display: inline-flex; align-items: center; gap: 12px;
+            background: #006400; color: white; padding: 16px 36px; border-radius: 14px;
+            text-decoration: none; font-weight: 600; font-size: 1.15rem;
+            box-shadow: 0 8px 25px rgba(0,100,0,0.35);
+            transition: all 0.3s ease;
+        }
+        .btn-download:hover { background: #004d00; transform: translateY(-4px); }
+
+        /* Horizontal Scrollable Table Wrapper */
+        .table-wrapper {
+            overflow-x: auto;
+            background: white;
+            border-radius: 18px;
+            box-shadow: 0 15px 45px rgba(0,64,128,0.12);
+            margin-bottom: 50px;
+            padding: 10px 0;
+        }
+        table {
+            width: 100%;
+            min-width: 1400px; /* Forces horizontal scroll if needed */
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        thead th {
+            background: var(--primary);
+            color: white;
+            padding: 20px 16px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        tbody td {
+            padding: 18px 16px;
+            border-bottom: 1px solid #eef2f6;
+            font-size: 1rem;
+            white-space: nowrap;
+        }
+        tbody tr:hover {
+            background: #f8fbff !important;
+            transform: scale(1.008);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+        }
+        tbody tr:nth-child(even) { background: #fdfdfd; }
+
+        /* Styling */
+        .emp-code { font-weight: 700; color: var(--primary); font-size: 1.1rem; }
+        .full-name { font-weight: 600; font-size: 1.15rem; color: #1a202c; }
+        .hike-amount {
+            background: linear-gradient(120deg, #e8f4ff, #d0e7ff);
+            color: #1a5fb4;
+            padding: 10px 18px;
+            border-radius: 14px;
+            font-weight: 700;
+            font-size: 1.05rem;
+            display: inline-block;
+            min-width: 120px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(26,95,180,0.2);
+        }
+        .badge {
+            padding: 8px 16px; border-radius: 50px; font-size: 0.85rem;
+            font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;
+        }
+        .status-active   { background:#e8f5e8; color:#1b5e20; }
+        .status-relieved { background:#ffebee; color:#c62828; }
+        .status-draft    { background:#fff3cd; color:#b56500; }
+        .status-rejoined { background:#e3f2fd; color:#1565c0; }
+
+        .footer {
+            text-align: center;
+            padding: 40px;
+            color: #718096;
+            font-size: 1rem;
+        }
+        .footer a { color: var(--primary); text-decoration: none; font-weight: 600; }
+        .footer a:hover { text-decoration: underline; }
+
+        /* Mobile View - Card Style */
+        @media (max-width: 992px) {
+            .table-wrapper { overflow-x: visible; padding: 0; }
+            table, thead, tbody, th, td, tr { display: block; }
+            thead { display: none; }
+            tbody tr {
+                margin: 20px 0;
+                padding: 20px;
+                background: white;
+                border-radius: 16px;
+                box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+                border: 1px solid #e2e8f0;
+            }
+            tbody td {
+                display: block;
+                text-align: right;
+                padding: 10px 0;
+                border: none;
+                white-space: normal;
+            }
+            tbody td:before {
+                content: attr(data-label);
+                float: left;
+                font-weight: 700;
+                color: var(--primary);
+                text-transform: uppercase;
+                font-size: 0.9rem;
+            }
+            .hike-amount { min-width: auto; display: block; text-align: right; }
+        }
+    </style>
+</head>
+<body>
+{% include 'includes/navbar.html' %}
+<div class="container">
+
+    <div class="header">
+        <h1>Employee Master Report</h1>
+        <div class="total-count">
+            Total Employees: <strong>{{ total }}</strong>
+        </div>
+        <a href="?download=1" class="btn-download">
+            Download Excel Report
+        </a>
+    </div>
+
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Emp Code</th>
+                    <th>Full Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Designation</th>
+                    <th>CTC (Annual)</th>
+                    <th>CTC (Monthly)</th>
+                    <th>Offer Date</th>
+                    <th>Hike Date</th>
+                    <th>Latest Hike</th>
+                    <th>Relieving Date</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for emp in employees %}
+                <tr>
+                    <td class="emp-code" data-label="Emp Code">{{ emp.emp_code }}</td>
+                    <td class="full-name" data-label="Full Name"><strong>{{ emp.full_name }}</strong></td>
+                    <td data-label="Email">{{ emp.email }}</td>
+                    <td data-label="Phone">{{ emp.phone }}</td>
+                    <td data-label="Designation">{{ emp.designation }}</td>
+                    <td data-label="CTC (Annual)"><strong>{{ emp.ctc_annual }}</strong></td>
+                    <td data-label="CTC (Monthly)">{{ emp.ctc_monthly }}</td>
+                    <td data-label="Offer Date">{{ emp.offer_date }}</td>
+                    <td data-label="Hike Date">
+                        {% if emp.hike_date != "-" %}{{ emp.hike_date }}{% else %}<em style="color:#ccc;">—</em>{% endif %}
+                    </td>
+                    <td data-label="Latest Hike">
+                        {% if emp.latest_hike != "-" %}
+                            <span class="hike-amount">{{ emp.latest_hike }}</span>
+                        {% else %}
+                            <span style="color:#a0aec0;">-</span>
+                        {% endif %}
+                    </td>
+                    <td data-label="Relieving Date">{{ emp.relieving_date }}</td>
+                    <td data-label="Status">
+                        {% if emp.status == "Active" %}
+                            <span class="badge status-active">Active</span>
+                        {% elif emp.status == "Draft" %}
+                            <span class="badge status-draft">Draft</span>
+                        {% elif emp.status|slice:":12" == "Relieved to " %}
+                            <span class="badge status-rejoined">Rejoined</span>
+                        {% else %}
+                            <span class="badge status-relieved">Relieved</span>
+                        {% endif %}
+                    </td>
+                    <td data-label="Created">{{ emp.created }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="13" style="text-align:center; padding:100px; color:#a0aec0; font-size:1.5rem;">
+                        No employees found
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="footer">
+        <a href="{% url 'employees:employee_list' %}">Back to Employee List</a>
+        <br><br>
+        <small>Generated on {{ "now"|date:"d M Y \\a\\t h:i A" }} • HRMS System</small>
+    </div>
+</div>
+
+<script>
+    feather.replace();
+</script>
+</body>
+</html>

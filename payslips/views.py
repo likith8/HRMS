@@ -1,3 +1,5 @@
+# payslips/views.py  ← CLEAN & CORRECTED VERSION
+
 from django.shortcuts import render, get_object_or_404, redirect
 from django.conf import settings
 from django.contrib import messages
@@ -11,9 +13,8 @@ from docxtpl import DocxTemplate
 from num2words import num2words
 import os
 import calendar
-import re
 
-# 🪙 Format in Indian style (e.g., 2,40,000.00)
+
 def indian_format(amount):
     try:
         amount = float(amount)
@@ -35,176 +36,156 @@ def indian_format(amount):
         int_part = s
     return f"{int_part}.{d}"
 
+
 def generate_payslip(request, employee_id):
     employee = get_object_or_404(Employee, id=employee_id)
     offer_letter = OfferLetter.objects.filter(employee=employee).last()
     hike_letter = HikeLetter.objects.filter(employee=employee).last()
-    error_message = None
 
     if request.method == "POST":
         based_on = request.POST.get("based_on")
         payslip_date = request.POST.get("payslip_date")
         days_worked = request.POST.get("days_worked")
 
-        if not (based_on and payslip_date and days_worked):
-            messages.error(request, "Please provide all required details.")
-            return redirect("employee_list")
+        if not all([based_on, payslip_date, days_worked]):
+            messages.error(request, "Please fill all fields.")
+            return redirect(request.path)
 
         try:
             date_obj = datetime.strptime(payslip_date, "%Y-%m-%d")
             month_year = date_obj.strftime("%B %Y")
-            month_year_hyp = date_obj.strftime("%B-%Y")
-            first_day = date_obj.replace(day=1)
-            last_day = date_obj.replace(day=calendar.monthrange(date_obj.year, date_obj.month)[1])
-            period = f"{first_day.strftime('%d/%m/%Y')} To {last_day.strftime('%d/%m/%Y')}"
         except ValueError:
-            messages.error(request, "Invalid date format.")
-            return redirect("employee_list")
+            messages.error(request, "Invalid date.")
+            return redirect(request.path)
 
         days_worked = int(days_worked)
-        emp_code = None
 
-        # ✅ Select salary source
+        # Salary source logic
         if based_on == "offer":
-            if offer_letter and offer_letter.offer_date:
-                if date_obj.date() < offer_letter.offer_date:
-                    messages.error(request, f"Payslip date cannot be before the Offer Date ({offer_letter.offer_date.strftime('%d-%b-%Y')}).")
-                    return redirect("employee_list")
-            annual_package = getattr(employee, 'package_per_annum', Decimal('0.00'))
-            emp_code=offer_letter.employee_code
+            if offer_letter and offer_letter.offer_date and date_obj.date() < offer_letter.offer_date:
+                messages.error(request, "Date cannot be before offer date.")
+                return redirect(request.path)
+
+            annual_package = getattr(employee, 'package_per_annum', Decimal('0'))
             offer_ref = offer_letter
             hike_ref = None
 
         elif based_on == "hike":
-            if hike_letter:
-                annual_package = getattr(hike_letter, 'new_package', Decimal('0.00'))
-                emp_code = hike_letter.employee_code
-                offer_ref = None
-                hike_ref = hike_letter
+            if not hike_letter:
+                messages.error(request, "No hike letter found.")
+                return redirect(request.path)
 
-                # 🚫 Validation: Prevent payslip before hike_start_date
-                if hike_letter.hike_start_date and date_obj.date() < hike_letter.hike_start_date:
-                    messages.error(
-                        request,
-                        f"Payslip date ({date_obj.strftime('%d-%b-%Y')}) cannot be before hike start date "
-                        f"({hike_letter.hike_start_date.strftime('%d-%b-%Y')})."
-                    )
-                    return redirect("employee_list")
+            annual_package = hike_letter.new_package or Decimal('0')
+            offer_ref = None
+            hike_ref = hike_letter
 
-            else:
-                messages.error(request, "No hike letter found for this employee.")
-                return redirect("employee_list")
+            if hike_letter.hike_start_date and date_obj.date() < hike_letter.hike_start_date:
+                messages.error(request, "Date cannot be before hike start date.")
+                return redirect(request.path)
         else:
             messages.error(request, "Invalid selection.")
-            return redirect("employee_list")
+            return redirect(request.path)
 
-        # ✅ Salary Breakdown (Monthly)
-        monthly_ctc = (annual_package / Decimal(12)).quantize(Decimal('0.01'))
+        # Salary calculation
+        monthly = (annual_package / 12).quantize(Decimal('0.01'))
+        basic = (monthly * Decimal('0.45')).quantize(Decimal('0.01'))
+        hra = (monthly * Decimal('0.225')).quantize(Decimal('0.01'))
+        conveyance = Decimal('1200')
+        remaining = monthly - basic - hra - conveyance
+        performance = (remaining * Decimal('0.60')).quantize(Decimal('0.01'))
+        special = (remaining * Decimal('0.40')).quantize(Decimal('0.01'))
+        gross_salary = monthly
+        net_salary = gross_salary - Decimal('200')
 
-        basic_pct = Decimal('0.45')
-        hra_pct = Decimal('0.225')
-        conveyance = Decimal('1200.00')
-        pf_employer = Decimal('0.00')
-        variable_pay = Decimal('0.00')
-        target_incentives = Decimal('0.00')
-
-        salary_month = {
-            'Basic': (monthly_ctc * basic_pct).quantize(Decimal('0.01')),
-            'HRA': (monthly_ctc * hra_pct).quantize(Decimal('0.01')),
-            'Conveyance': conveyance,
-        }
-
-        remaining = monthly_ctc - (salary_month['Basic'] + salary_month['HRA'] + conveyance)
-        salary_month['Performance_Incentives'] = (remaining * Decimal('0.60')).quantize(Decimal('0.01'))
-        salary_month['Special_Allowance'] = (remaining * Decimal('0.40')).quantize(Decimal('0.01'))
-        salary_month['PF_Employer'] = pf_employer
-        salary_month['Variable_Pay'] = variable_pay
-        salary_month['Target_Incentives'] = target_incentives
-
-        # ✅ Totals
-        gross_salary = monthly_ctc
-        per_day_salary = gross_salary / Decimal(30)
-        gross_for_days = per_day_salary * Decimal(days_worked)
-        deductions = Decimal('200.00')
-        net_salary = gross_salary - deductions
-
-        # ✅ Date of Joining format (e.g., 06ᵗʰ January, 2020)
-        formatted_offer_date = None
-        if offer_letter and offer_letter.offer_date:
-            offer_date_new = offer_letter.offer_date
-            day_int = offer_date_new.day
-            if 10 <= day_int % 100 <= 20:
-                suffix = "ᵀʰ"
-            else:
-                suffix = {1: "Sᵗ", 2: "ᴺᵈ", 3: "ᴿᵈ"}.get(day_int % 10, "ᵀʰ")
-            formatted_offer_date = f"{day_int:02d}{suffix} {offer_date_new.strftime('%B, %Y')}"
-
-        # ✅ Convert net salary to words
-        net_salary_words = num2words(net_salary, lang='en_IN').title()
-        if not net_salary_words.endswith("Only"):
-            net_salary_words = f"{net_salary_words} Indian Rupees Only"
-
-        # ✅ Save Payslip record
-        payslip = Payslip.objects.create(
+        # STORE FULL SALARY (NO PRORATION)
+        payslip, created = Payslip.objects.update_or_create(
             employee=employee,
-            based_on=based_on,
-            offer_letter=offer_ref,
-            hike_letter=hike_ref,
             month_year=month_year,
-            days_worked=days_worked,
-            gross_salary=gross_for_days,
-            deductions=deductions,
-            net_salary=net_salary
+            defaults={
+                'based_on': based_on,
+                'offer_letter': offer_ref,
+                'hike_letter': hike_ref,
+                'days_worked': days_worked,
+                'gross_salary': gross_salary,     # FULL salary
+                'deductions': Decimal('200'),
+                'net_salary': net_salary,         # FULL net salary
+            }
         )
 
-        # ✅ Prepare context for Word document
+        # Generate document
         context = {
-            'employee_name': f"{employee.first_name} {employee.last_name or ''}".strip(),
-            'designation': employee.designation,
-            'emp_code': emp_code,
+            'employee_name': f"{employee.first_name} {employee.last_name}".strip(),
+            'designation': employee.designation or "N/A",
+            'emp_code': (
+                offer_letter.employee_code if based_on == "offer"
+                else hike_letter.employee_code
+            ) if offer_letter or hike_letter else "N/A",
             'monthyear': month_year,
-            'monthyearhyp': month_year_hyp,
-            'period': period,
+            'monthyearhyp': month_year.replace(" ", "-"),
+            'period': f"01/{date_obj.month:02d}/{date_obj.year} To "
+                      f"{calendar.monthrange(date_obj.year, date_obj.month)[1]:02d}/{date_obj.month:02d}/{date_obj.year}",
             'days': days_worked,
-            'date_of_joining': formatted_offer_date,
-
-            # Salary Components (formatted)
-            'Basic': indian_format(salary_month['Basic']),
-            'HRA': indian_format(salary_month['HRA']),
-            'Conveyance': indian_format(salary_month['Conveyance']),
-            'Performance': indian_format(salary_month['Performance_Incentives']),
-            'Special_Allowance': indian_format(salary_month['Special_Allowance']),
+            'date_of_joining': offer_letter.offer_date.strftime("%d %B %Y") if offer_letter and offer_letter.offer_date else "",
+            'Basic': indian_format(basic),
+            'HRA': indian_format(hra),
+            'Conveyance': indian_format(conveyance),
+            'Performance': indian_format(performance),
+            'Special_Allowance': indian_format(special),
             'Total_Addition': indian_format(gross_salary),
             'Net_Salary': indian_format(net_salary),
-            'Net_Salary_Words': net_salary_words,
+            'Net_Salary_Words': num2words(int(net_salary), lang='en_IN').title() + " Rupees Only",
         }
 
-        # ✅ Generate Word Payslip
         template_path = os.path.join(settings.BASE_DIR, 'templates', 'payslip_template.docx')
         doc = DocxTemplate(template_path)
         doc.render(context)
 
-        output_filename = f"payslip_{employee.first_name}{'_' + employee.last_name if employee.last_name else ''}_{month_year.replace(' ', '_')}.docx"
-        output_path = os.path.join(settings.MEDIA_ROOT, 'payslips', output_filename)
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        filename = f"Payslip_{employee.first_name}_{employee.last_name}_{month_year.replace(' ', '_')}.docx"
+        filepath = os.path.join(settings.MEDIA_ROOT, 'payslips', filename)
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
 
-        if os.path.exists(output_path):
+        if os.path.exists(filepath):
             try:
-                os.remove(output_path)
+                os.remove(filepath)
             except PermissionError:
-                messages.error(request, "Close the open payslip file and try again.")
-                return redirect('employee_list')
+                messages.error(request, "Close the open file and try again.")
+                return redirect(request.path)
 
-        doc.save(output_path)
+        doc.save(filepath)
 
-        messages.success(request, f"Payslip for {employee.first_name} generated successfully!")
-        return redirect("employee_list")
+        payslip.payslip_file.name = f"payslips/{filename}"
+        payslip.save(update_fields=['payslip_file'])
+
+        if payslip.payslip_file:
+            payslip.payslip_file.close()
+            payslip.payslip_file = payslip.payslip_file
+
+        messages.success(request, f"Payslip for {month_year} generated successfully!")
+        return redirect(request.path + f"?month={date_obj.strftime('%Y-%m')}")
+
+    # GET request
+    payslip_obj = None
+    file_exists = False
+
+    if request.GET.get("month"):
+        selected = request.GET.get("month")
+        payslip_obj = Payslip.objects.filter(employee=employee, month_year=selected).first()
+    else:
+        payslip_obj = Payslip.objects.filter(employee=employee).order_by('-created_at').first()
+
+    if payslip_obj and payslip_obj.payslip_file:
+        file_exists = os.path.exists(payslip_obj.payslip_file.path)
+
+    payslips_list = Payslip.objects.filter(employee=employee).order_by('-created_at')
 
     return render(request, "payslips/generate_payslip.html", {
         "employee": employee,
         "offer_letter": offer_letter,
         "hike_letter": hike_letter,
-        "error_message": error_message,
+        "payslip_obj": payslip_obj,
+        "file_exists": file_exists,
         "offer_start_date": offer_letter.offer_date.strftime("%Y-%m-%d") if offer_letter and offer_letter.offer_date else None,
         "hike_start_date": hike_letter.hike_start_date.strftime("%Y-%m-%d") if hike_letter and hike_letter.hike_start_date else None,
+        "payslips_list": payslips_list,
+        "Net_Salary":indian_format(payslip_obj.net_salary) if payslip_obj else None,
     })

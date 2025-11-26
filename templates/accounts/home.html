@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HR Management System</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f6f8;
+        }
+
+        /* Navbar */
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #2c3e50;
+            color: #fff;
+            padding: 15px 30px;
+            position: sticky;
+            top: 0;
+        }
+        .navbar a {
+            color: #fff;
+            text-decoration: none;
+            margin-left: 20px;
+            font-weight: 500;
+        }
+
+        /* Hero Section */
+        .hero {
+            text-align: center;
+            padding: 100px 20px;
+            background: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url('https://images.unsplash.com/photo-1581092580496-fc6a43a61aab?auto=format&fit=crop&w=1470&q=80') center/cover no-repeat;
+            color: white;
+        }
+        .hero h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+        .hero p {
+            font-size: 20px;
+            margin-bottom: 30px;
+        }
+        .hero .btn {
+            padding: 12px 30px;
+            background-color: #e67e22;
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            border-radius: 5px;
+        }
+
+        /* Features Section */
+        .features {
+            padding: 60px 20px;
+            text-align: center;
+        }
+        .features h2 {
+            font-size: 36px;
+            margin-bottom: 40px;
+        }
+        .feature-cards {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 30px;
+        }
+        .feature-card {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            width: 250px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+        .feature-card h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+        .feature-card p {
+            color: #555;
+        }
+
+        /* Footer */
+        footer {
+            background-color: #2c3e50;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+
+        @media(max-width: 768px) {
+            .feature-cards {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navbar -->
+<div class="navbar">
+    <div class="logo">HR Management System</div>
+    <div class="nav-links">
+        <a href="{% url 'home' %}">Home</a>
+        {% if user.is_authenticated %}
+            <a href="{% url 'accounts:logout' %}">Logout</a>
+        {% else %}
+            <a href="{% url 'accounts:login' %}">Login</a>
+        {% endif %}
+    </div>
+</div>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <h1>Welcome to HR Management System</h1>
+        <p>Streamline your HR processes with ease and efficiency</p>
+        <a href="#" class="btn">Get Started</a>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features">
+        <h2>Our Features</h2>
+        <div class="feature-cards">
+            <div class="feature-card">
+                <h3>Employee Management</h3>
+                <p>Keep all employee records organized and easily accessible.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Payroll System</h3>
+                <p>Automate salary calculations, deductions, and payslips.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Recruitment</h3>
+                <p>Manage hiring process and onboarding seamlessly.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        &copy; 2025 HR Management System. All Rights Reserved.
+    </footer>
+
+</body>
+</html>

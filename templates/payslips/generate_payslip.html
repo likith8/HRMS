@@ -3,168 +3,282 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Generate Payslip</title>
+    <title>Generate Payslip - {{ employee.first_name }} {{ employee.last_name }}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f5f5f5;
-            margin: 30px;
-            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0; padding: 20px; min-height: 100vh; color: #333;
         }
-        .container {
-            max-width: 600px;
-            margin: auto;
-            background: #fff;
-            padding: 25px 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        .container {max-width: 900px; margin: 30px auto; background: #fff;
+            border-radius: 20px; box-shadow: 0 15px 40px rgba(0,0,0,0.2); overflow: hidden;}
+        .header {background: linear-gradient(135deg, #004080, #0077be);
+            color: white; padding: 28px; text-align: center;}
+        h2 { margin: 0; font-size: 28px; }
+        .info { margin: 6px 0; font-size: 15px; opacity: 0.95; }
+        .body { padding: 32px 40px; }
+
+        label { display: block; margin-top: 18px; font-weight: bold; font-size: 14px; }
+        select, input {
+            width: 100%; padding: 12px; margin-top: 8px;
+            border: 2px solid #ddd; border-radius: 10px; font-size: 15px; transition: all 0.2s;
         }
-        h2 { text-align: center; color: #004080; margin-bottom: 20px; }
-        label { display: block; margin-top: 15px; font-weight: bold; }
-        select, input[type="text"], input[type="number"], input[type="date"] {
-            width: 100%; padding: 8px; margin-top: 6px; border: 1px solid #ccc;
-            border-radius: 4px; font-size: 14px;
-        }
+        select:focus, input:focus { border-color: #004080; outline: none; }
+
         button {
-            width: 100%; margin-top: 20px; padding: 10px 0; background-color: #004080;
-            color: white; border: none; border-radius: 5px; font-size: 15px; cursor: pointer;
+            width: 100%; margin-top: 20px; padding: 12px 18px;
+            background: #004080; color: white; border: none;
+            border-radius: 10px; font-size: 16px; cursor: pointer;
+            font-weight: 700; transition: 0.18s;
         }
-        button:hover { opacity: 0.9; }
-        .info { margin-bottom: 8px; font-size: 15px; }
-        .back-link { display: block; text-align: center; margin-top: 15px; color: #444; text-decoration: none; }
+        button:hover { background: #003366; transform: translateY(-2px); }
+
+        .back-link { display: block; text-align: center; margin-top: 18px;
+            color: #004080; font-weight: bold; text-decoration: none; }
         .back-link:hover { text-decoration: underline; }
-        .date-info {
-            margin-top: 10px; padding: 12px; border-radius: 6px; font-size: 14px;
-            text-align: center; font-weight: 500;
+
+        .date-info { margin: 12px 0; padding: 12px; border-radius: 10px; font-size: 14px; text-align: center; font-weight: 600; }
+        .valid { background: #e8f5e9; color: #2e7d32; border: 2px solid #4caf50; }
+        .invalid { background: #fff3e0; color: #e65100; border: 2px solid #ff9800; }
+
+        .download-box {
+            text-align: center; margin: 28px 0; padding: 20px 24px;
+            background: linear-gradient(135deg, #f1f8f1, #e8f5e9);
+            border-radius: 14px; border: 2px solid #4caf50;
         }
-        .valid { background: #e8f5e9; color: #2e7d32; border: 1px solid #4caf50; }
-        .invalid { background: #fdf2f2; color: #c62828; border: 1px solid #e74c3c; }
+        .download-btn {
+            display: inline-block; background: #1b5e20; color: white;
+            padding: 12px 28px; border-radius: 10px; text-decoration: none;
+            font-size: 16px; font-weight: 700; margin-top: 12px;
+        }
+        .download-btn:hover { background: #0b3f10; }
+
+        .missing-file {
+            background: #fff3f2; border: 2px solid #f44336; color: #c62828;
+            padding: 16px; border-radius: 10px; text-align: center; margin: 18px 0;
+        }
+
+        .month-picker { text-align: center; margin: 18px 0; }
+        .month-picker select { width: 360px; display: inline-block; }
+        @media (max-width:720px) {
+            .container { margin: 12px; }
+            .body { padding: 20px; }
+            .month-picker select { width: 100%; }
+        }
     </style>
 </head>
+
 <body>
-
+{% include 'includes/navbar.html' %}
 <div class="container">
-    <h2>Generate Payslip</h2>
-
-    <div class="info"><strong>Employee:</strong> {{ employee.first_name }} {{ employee.last_name }}</div>
-    <div class="info"><strong>Designation:</strong> {{ employee.designation|default:"—" }}</div>
-    <div class="info"><strong>Offer Date:</strong> {{ offer_letter.offer_date|date:"d M Y"|default:"Not Set" }}</div>
-
-    {% if hike_letter and hike_letter.hike_start_date %}
-        <div class="info" style="color:#d35400; font-weight:bold;">
-            Latest Hike Effective From: {{ hike_letter.hike_start_date|date:"d M Y" }}
-        </div>
-    {% endif %}
-
-    <form method="POST">
-        {% csrf_token %}
-
-        <label for="based_on">Generate Based On:</label>
-        <select name="based_on" id="based_on" required>
-            <option value="">-- Select Salary Source --</option>
-            <option value="offer" {% if request.POST.based_on != 'hike' %}selected{% endif %}>
-                Offer Letter
-            </option>
-            {% if hike_letter %}
-                <option value="hike" {% if request.POST.based_on == 'hike' %}selected{% endif %}>
-                    Hike Letter
-                </option>
-            {% endif %}
-        </select>
-
-        <div id="date-info" class="date-info valid">
-            Select salary source to see valid dates.
-        </div>
-
-        <label for="payslip_date">Payslip Date (Period):</label>
-        <input type="date" id="payslip_date" name="payslip_date"
-               value="{{ request.POST.payslip_date|default_if_none:'' }}" required>
-
-        <label for="days_worked">Days Worked:</label>
-        <input type="number" id="days_worked" name="days_worked" min="1" max="31"
-               value="{{ request.POST.days_worked|default_if_none:'' }}" placeholder="e.g. 30" required>
-
-        <button type="submit">Generate Payslip</button>
-    </form>
-
-    {% if messages %}
-        {% for message in messages %}
-            <div class="date-info invalid" style="margin-top:10px;">
-                {{ message }}
+    <div class="header">
+        <h2>Generate Payslip</h2>
+        <div class="info"><strong>{{ employee.first_name }} {{ employee.last_name }}</strong></div>
+        <div class="info">{{ employee.designation|default:"—" }} • {{ employee.department|default:"—" }}</div>
+        {% if hike_letter %}
+            <div class="info" style="margin-top:8px; font-weight:700; color:#ffeb3b;">
+                Latest Hike: {{ hike_letter.hike_start_date|date:"d M Y" }}
             </div>
-        {% endfor %}
-    {% endif %}
+        {% endif %}
+    </div>
 
-    <a href="{% url 'employee_list' %}" class="back-link">Back to Employee List</a>
+    <div class="body">
+
+        <!-- MONTH PICKER -->
+        {% if payslips_list %}
+            <div class="month-picker">
+                <form method="get">
+                    <select name="month" onchange="this.form.submit()">
+                        <option value="">-- Select Existing Payslip Month --</option>
+                        {% for p in payslips_list %}
+                            <option value="{{ p.month_year }}"
+                                {% if request.GET.month == p.month_year %}selected{% endif %}>
+                                {{ p.month_year }} (₹{{ p.net_salary|floatformat:0 }} net)
+                            </option>
+                        {% endfor %}
+                    </select>
+                </form>
+            </div>
+        {% endif %}
+
+        <!-- DOWNLOAD / STATUS -->
+        {% if payslip_obj %}
+            {% if file_exists %}
+                <div class="download-box">
+                    <h3>Payslip Ready</h3>
+                    <div style="font-weight:800; font-size:18px; margin:6px 0;">{{ payslip_obj.month_year }}</div>
+
+                    <p style="margin:6px 0;">
+                        <strong>Net Salary:</strong>
+                        <span style="font-size:22px; color:#d32f2f;">
+                            ₹
+                            {% if Net_Salary %}
+                                {{ Net_Salary }}
+                            {% else %}
+                                {{ payslip_obj.net_salary|floatformat:0 }}
+                            {% endif %}
+                        </span>
+                    </p>
+
+                    <a href="{{ payslip_obj.payslip_file.url }}" target="_blank" class="download-btn">Download Payslip</a>
+                    <div style="margin-top:8px; color:#2e7d32; font-size:13px;">
+                        Generated on {{ payslip_obj.created_at|date:"d M Y, h:i A" }}
+                    </div>
+                </div>
+            {% else %}
+                <div class="missing-file">
+                    <strong>Payslip exists for {{ payslip_obj.month_year }} but file is missing.</strong>
+                    <div style="margin-top:8px;">Please regenerate the payslip below.</div>
+                </div>
+            {% endif %}
+        {% endif %}
+
+        <!-- MESSAGES -->
+        {% if messages %}
+            {% for message in messages %}
+                <div class="date-info {% if 'error' in message.tags %}invalid{% else %}valid{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <!-- GENERATION FORM -->
+        <form method="POST">
+            {% csrf_token %}
+
+            <label for="based_on">Generate Based On:</label>
+            <select id="based_on" name="based_on" required>
+                <option value="">-- Select Salary Source --</option>
+                <option value="offer" {% if request.POST.based_on != 'hike' %}selected{% endif %}>Offer Letter</option>
+                {% if hike_letter %}
+                    <option value="hike" {% if request.POST.based_on == 'hike' %}selected{% endif %}>Hike Letter</option>
+                {% endif %}
+            </select>
+
+            <div id="date-info" class="date-info">Select salary source to see valid dates.</div>
+
+            <label for="payslip_date">Payslip Date (any day in the month):</label>
+            <input type="date" id="payslip_date" name="payslip_date"
+                   value="{{ request.POST.payslip_date|default_if_none:'' }}" required>
+
+            <label for="days_worked">Days Worked in Month:</label>
+            <input type="number" id="days_worked" name="days_worked" min="1" max="31"
+                   value="{{ request.POST.days_worked|default_if_none:'' }}" placeholder="e.g. 30" required>
+
+            <button type="submit">Generate / Regenerate Payslip</button>
+        </form>
+
+        <a href="{% url 'employees:employee_list' %}" class="back-link">Back to Employee List</a>
+    </div>
 </div>
 
 <script>
+    // DOM elements
     const basedOn = document.getElementById("based_on");
     const dateInput = document.getElementById("payslip_date");
     const infoBox = document.getElementById("date-info");
 
-    // Fixed Mistake 2: Use |default:'' so it never becomes "None"
+    // Server-supplied dates (strings like YYYY-MM-DD or empty)
     const offerDate = "{{ offer_letter.offer_date|date:'Y-m-d'|default:'' }}";
     const hikeStartDate = "{{ hike_letter.hike_start_date|date:'Y-m-d'|default:'' }}";
 
-    function updateDateRules() {
-        let minDate = "";
-        let maxDate = "";
-        let message = "Select salary source to see valid dates.";
-
-        if (basedOn.value === "offer" && offerDate) {
-            minDate = offerDate;
-
-            if (hikeStartDate) {
-                // Offer salary ends 1 day before hike
-                const hike = new Date(hikeStartDate);
-                const lastDay = new Date(hike);
-                lastDay.setDate(hike.getDate() - 1);
-                maxDate = lastDay.toISOString().split('T')[0];
-                message = `Offer Salary Valid: ${new Date(offerDate).toLocaleDateString('en-IN')} → ${lastDay.toLocaleDateString('en-IN')}`;
-            } else {
-                message = `Offer Salary Valid from: ${new Date(offerDate).toLocaleDateString('en-IN')} onwards`;
-            }
-        }
-        else if (basedOn.value === "hike" && hikeStartDate) {
-            minDate = hikeStartDate;
-            message = `Hike Salary Valid from: ${new Date(hikeStartDate).toLocaleDateString('en-IN')} onwards`;
-        }
-
-        // Apply min and max
-        dateInput.min = minDate;
-        if (maxDate) {
-            dateInput.max = maxDate;
-        } else {
-            dateInput.removeAttribute("max");
-        }
-
-        // Clear invalid date
-        if (dateInput.value) {
-            const val = dateInput.value;
-            if ((minDate && val < minDate) || (maxDate && val > maxDate)) {
-                dateInput.value = "";
-                infoBox.className = "date-info invalid";
-                infoBox.textContent = "Invalid date! " + message;
-                return;
-            }
-        }
-
-        // Show message
-        if (basedOn.value && message.includes("Valid")) {
-            infoBox.className = "date-info valid";
-            infoBox.textContent = message;
-        } else {
-            infoBox.className = "date-info valid";
-            infoBox.textContent = "Select salary source to see valid dates.";
-        }
+    // today's date string (YYYY-MM-DD) — blocks all past dates
+    function todayString() {
+        const t = new Date();
+        t.setHours(0,0,0,0);
+        return t.toISOString().split("T")[0];
     }
 
-    // Run on load + every change
-    basedOn.addEventListener("change", updateDateRules);
-    dateInput.addEventListener("input", updateDateRules);
-    window.addEventListener("load", updateDateRules);
+    // Utility to set attribute or remove if empty
+    function setOrRemoveAttr(el, attr, val) {
+        if (val && val.length) el.setAttribute(attr, val);
+        else el.removeAttribute(attr);
+    }
+
+    function updateDateRules() {
+        const today = todayString();
+        let minDate = today;   // baseline: no past dates allowed
+        let maxDate = "";      // by default no upper limit
+        let message = "Select salary source to see valid dates.";
+
+        if (basedOn.value === "offer") {
+            if (offerDate) {
+                // minimum is the later of offerDate and today
+                minDate = (offerDate > today) ? offerDate : today;
+            } else {
+                // if no offerDate provided, keep today's as min
+                minDate = today;
+            }
+
+            if (hikeStartDate) {
+                // max allowed = 1 day before hikeStartDate
+                const d = new Date(hikeStartDate);
+                d.setDate(d.getDate() - 1);
+                maxDate = d.toISOString().split("T")[0];
+            } else {
+                maxDate = ""; // no upper limit if no hike
+            }
+
+            if (offerDate) {
+                message = "Allowed from " + (new Date(minDate)).toLocaleDateString('en-IN');
+                if (maxDate) message += " to " + (new Date(maxDate)).toLocaleDateString('en-IN');
+            } else {
+                message = "Offer date not set — only future dates allowed.";
+            }
+        }
+        else if (basedOn.value === "hike") {
+            if (hikeStartDate) {
+                // For hike-based payslip, block dates before hikeStartDate
+                minDate = (hikeStartDate > today) ? hikeStartDate : today;
+            } else {
+                // if hike date missing, use today as min
+                minDate = today;
+            }
+            maxDate = ""; // no upper limit for hike
+            message = "Allowed from " + (new Date(minDate)).toLocaleDateString('en-IN');
+        } else {
+            // no selection: keep baseline min = today
+            minDate = today;
+            maxDate = "";
+            message = "Select salary source to see valid dates.";
+        }
+
+        // Apply attributes
+        setOrRemoveAttr(dateInput, 'min', minDate);
+        if (maxDate) setOrRemoveAttr(dateInput, 'max', maxDate);
+        else dateInput.removeAttribute('max');
+
+        // If currently selected date is invalid, auto-correct it
+        if (dateInput.value) {
+            // if selected < min => set to min
+            if (minDate && dateInput.value < minDate) {
+                dateInput.value = minDate;
+            }
+            // if selected > max => set to max
+            if (maxDate && dateInput.value > maxDate) {
+                dateInput.value = maxDate;
+            }
+        }
+
+        // Update info box visually
+        infoBox.textContent = message;
+        // optional styling class (valid/invalid) — keep simple
+        infoBox.className = "date-info " + (basedOn.value ? "valid" : "");
+    }
+
+    // Init
+    window.addEventListener('load', function() {
+        updateDateRules();
+    });
+
+    basedOn.addEventListener('change', updateDateRules);
+    dateInput.addEventListener('input', function() {
+        // If user types or picks a date, immediately re-evaluate
+        updateDateRules();
+    });
 </script>
 
 </body>

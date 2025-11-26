@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create User</title>
+</head>
+<body>
+    <h2>Create New User (Admin Only)</h2>
+
+    {% for message in messages %}
+        <p style="color:red;">{{ message }}</p>
+    {% endfor %}
+
+    <form method="POST">
+        {% csrf_token %}
+        <label>Username:</label>
+        <input type="text" name="username" required>
+
+        <label>Password:</label>
+        <input type="password" name="password" required>
+
+        <button type="submit">Create User</button>
+    </form>
+
+    <br>
+    <a href="{% url 'accounts:dashboard' %}">Back to Dashboard</a>
+</body>
+</html>

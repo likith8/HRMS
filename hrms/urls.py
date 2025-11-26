@@ -18,13 +18,17 @@ from django.contrib import admin
 from django.urls import path,include
 from django.conf import settings
 from django.conf.urls.static import static
+from accounts.views import home 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('employees/', include('employees.urls')),
+    path('accounts/', include('accounts.urls', namespace='accounts')),
+    path('employees/', include('employees.urls',namespace='employees')),
     path('offerletters/', include('offerletters.urls')),
     path('hikeletters/', include('hikeletters.urls')),
     path('payslips/', include('payslips.urls')),
     path('releaving/', include('releaving.urls')),
+    path('', home, name='home'),
+
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

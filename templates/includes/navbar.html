@@ -1,0 +1,43 @@
+<nav style="
+    background:#2c3e50; 
+    padding:15px 30px; 
+    display:flex; 
+    justify-content:space-between; 
+    align-items:center;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+">
+    <!-- Left: Site name -->
+    <div style="font-size:22px; font-weight:bold; color:white;">HR Management System</div>
+
+    <!-- Right: User actions -->
+    <div style="display:flex; align-items:center; gap:15px;">
+        {% if user.is_authenticated %}
+            <span style="color:white;">Welcome, {{ user.username }}</span>
+            <a href="{% url 'accounts:dashboard' %}" style="
+                color:white; 
+                text-decoration:none; 
+                font-weight:bold;
+                padding:5px 10px;
+                border-radius:5px;
+                transition:0.3s;
+            " onmouseover="this.style.background='#1a2a3a'" onmouseout="this.style.background='transparent'">Dashboard</a>
+            <a href="{% url 'accounts:logout' %}" style="
+                color:white; 
+                text-decoration:none; 
+                font-weight:bold;
+                padding:5px 10px;
+                border-radius:5px;
+                transition:0.3s;
+            " onmouseover="this.style.background='#1a2a3a'" onmouseout="this.style.background='transparent'">Logout</a>
+        {% else %}
+            <a href="{% url 'accounts:login' %}" style="
+                color:white; 
+                text-decoration:none; 
+                font-weight:bold;
+                padding:5px 10px;
+                border-radius:5px;
+                transition:0.3s;
+            " onmouseover="this.style.background='#1a2a3a'" onmouseout="this.style.background='transparent'">Login</a>
+        {% endif %}
+    </div>
+</nav>

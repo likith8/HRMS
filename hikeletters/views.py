@@ -1,3 +1,5 @@
+# hikeletters/views.py
+
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from decimal import Decimal
@@ -11,7 +13,6 @@ from hikeletters.models import HikeLetter
 from offerletters.models import OfferLetter
 
 
-# Get first day of next month
 def get_first_day_of_next_month(input_date):
     year = input_date.year
     month = input_date.month
@@ -21,12 +22,11 @@ def get_first_day_of_next_month(input_date):
         return date(year, month + 1, 1)
 
 
-# Convert number to Indian comma format
 def indian_format(amount):
     try:
         amount = float(amount)
     except:
-        return amount
+        return str(amount)
 
     s, d = f"{amount:.2f}".split(".")
     if len(s) > 3:
@@ -45,7 +45,6 @@ def indian_format(amount):
     return f"{int_part}.{d}"
 
 
-# Convert number to words (Lakhs/Crores)
 def num_to_words(num):
     num = float(num)
     if num >= 10000000:
@@ -59,7 +58,6 @@ def num_to_words(num):
         return f"{value:.2f}".rstrip('0').rstrip('.') + " Thousand Per Annum"
 
 
-# Salary breakup calculation
 def calculate_salary_breakup(per_annum):
     basic_pct = Decimal('0.45')
     hra_pct = Decimal('0.225')
@@ -78,7 +76,6 @@ def calculate_salary_breakup(per_annum):
     return salary_annum
 
 
-# Main View — Generate Hike Letter
 def generate_hike_letter(request, employee_id):
     employee = get_object_or_404(Employee, id=employee_id)
 
@@ -94,16 +91,13 @@ def generate_hike_letter(request, employee_id):
     else:
         employee_code = f"STPL{employee.id:03d}"
         original_joining_date = date.today()
-    # Variable Pay from original offer letter
+
     old_variable_pay = Decimal('0.00')
     if offerletter and offerletter.variable_pay_per_annum:
         old_variable_pay = offerletter.variable_pay_per_annum.quantize(Decimal('0.01'))
 
-    # Keep variable pay same during hike (standard practice)
     new_variable_pay = old_variable_pay
-    # MIN DATE = Original joining date (NOT last hike)
     min_date = original_joining_date
-
     error_message = None
 
     if request.method == "POST":
@@ -125,13 +119,17 @@ def generate_hike_letter(request, employee_id):
                 except:
                     error_message = "Invalid date format."
                 else:
-                    # Only restriction: cannot be before original joining date
                     if date_obj < min_date:
                         error_message = f"Hike date cannot be before original joining date: {min_date.strftime('%d %B %Y')}"
                     else:
+
+                        # ---------------------------
+                        # IMPORTANT: Updated Rule
+                        # Hike MUST start from 1st of next month ALWAYS
+                        # ---------------------------
                         hike_start_date = get_first_day_of_next_month(date_obj)
 
-                        # Always update/create — allows regeneration & corrections
+                        # Update or create hike record
                         hike_record, created = HikeLetter.objects.update_or_create(
                             employee=employee,
                             defaults={
@@ -147,11 +145,10 @@ def generate_hike_letter(request, employee_id):
                         template_path = os.path.join("templates", "hike_letter_template.docx")
                         doc = DocxTemplate(template_path)
 
-
                         old_breakup = calculate_salary_breakup(old_package)
                         new_breakup = calculate_salary_breakup(new_package)
-                        old_package_per_annum=old_package+old_variable_pay
-                        new_package_per_annum=new_package+new_variable_pay
+                        old_package_per_annum = old_package + old_variable_pay
+                        new_package_per_annum = new_package + new_variable_pay
 
                         context = {
                             "date": date_obj.strftime("%d %B %Y"),
@@ -173,23 +170,22 @@ def generate_hike_letter(request, employee_id):
                             "new_special": indian_format(new_breakup['Special_Allowance']),
                             "hike_month_year": hike_start_date.strftime("%B %Y"),
                             "new_package_words": num_to_words(new_package_per_annum),
-                            "Variable_Pay_annum":indian_format(old_variable_pay),
+                            "Variable_Pay_annum": indian_format(old_variable_pay),
                         }
 
                         doc.render(context)
 
+                        # File operations
                         output_dir = os.path.join("media", "hike_letters")
                         os.makedirs(output_dir, exist_ok=True)
-                        safe_name = re.sub(r"[^\w]", "_", employee_name)
-                        filename = f"{employee_name}_{employee_code}_hike_letter.docx"
+                        filename = f"{re.sub(r'[^\w]', '_', employee_name)}_{employee_code}_hike_letter.docx"
                         output_path = os.path.join(output_dir, filename)
 
-                        # Handle file lock
                         if os.path.exists(output_path):
                             try:
                                 os.remove(output_path)
                             except PermissionError:
-                                messages.error(request, "Previous hike letter is open. Close it and try again.")
+                                messages.error(request, "Previous hike letter is open in Word. Close it and try again.")
                                 return redirect(request.path)
 
                         try:
@@ -198,17 +194,27 @@ def generate_hike_letter(request, employee_id):
                             messages.error(request, "Cannot save: File is open in Word. Close it first.")
                             return redirect(request.path)
 
-                        hike_record.hike_letter_file.name = output_path.replace("media/", "")
+                        hike_record.hike_letter_file.name = f"hike_letters/{filename}"
                         hike_record.save()
+
+                        hike_record.hike_letter_file.close()
+                        hike_record.hike_letter_file = hike_record.hike_letter_file
 
                         messages.success(request, f"Hike letter generated successfully for {employee_name}!")
                         return redirect('employee_list')
 
-    # GET request
+    latest_hike = HikeLetter.objects.filter(employee=employee).first()
+
+    file_exists = False
+    if latest_hike and latest_hike.hike_letter_file:
+        file_exists = latest_hike.hike_letter_file.storage.exists(latest_hike.hike_letter_file.name)
+
     return render(request, "hikeletters/hike_letter.html", {
         "employee": employee,
         "old_package": old_package,
         "designation": designation,
         "error_message": error_message,
-        "min_date": min_date,  # This is now original offer date
+        "min_date": min_date,
+        "hike_letter_obj": latest_hike,
+        "file_exists": file_exists,
     })

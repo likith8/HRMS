@@ -43,7 +43,8 @@ INSTALLED_APPS = [
     'offerletters',
     'hikeletters',
     'payslips',
-    'releaving'
+    'releaving',
+    'accounts',
 ]
 
 MIDDLEWARE = [
@@ -53,7 +54,9 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    'accounts.middleware.AuthRequiredMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    
 ]
 
 ROOT_URLCONF = 'hrms.urls'
@@ -130,3 +133,16 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 EMP_CODE_START = 28
+
+LOGIN_URL = '/'  # or '/login/' if you have that path
+LOGIN_REDIRECT_URL = '/dashboard/'  # where to go after login
+
+
+# --- Session timeout ---
+SESSION_COOKIE_AGE = 60*15 # 60 seconds = 1 minute
+SESSION_SAVE_EVERY_REQUEST = True  # Reset timer on each request
+
+# Optional security settings
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True  # Logs out when browser closes
+SESSION_COOKIE_HTTPONLY = True           # Prevent JavaScript access
+CSRF_COOKIE_HTTPONLY = True              # Extra security
